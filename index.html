@@ -500,15 +500,22 @@
 </div>
 
 <script>
-	function cleanWords(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .split(" ");
-}
-	let typingActive = false;
-	const typeSound = new Audio("ses/single-key-press-393908.mp3")
-typeSound.volume = 0.25;
+  // 🔑 typing kontrolü (TEK TANIM)
+  let typingActive = false;
+
+  // 🔊 daktilo sesi
+  const typeSound = new Audio("ses/single-key-press-393908.mp3");
+  typeSound.volume = 0.25;
+
+  // 🧹 metin temizleme
+  function normalize(text) {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .trim();
+  }
+
+
 
 const authors = {
   halit: {
@@ -979,19 +986,14 @@ modalOverlay.addEventListener('click', (e) => {
 });
 	
 function sendCustom() {
-  const inp = document.getElementById('chatInput');
-  const txt = inp.value.trim();
-  if (!txt) return;
+  const input = document.getElementById("chatInput");
+  const question = input.value.trim();
+  if (!question) return;
 
-  showTyping("user");
-
-  setTimeout(() => {
-    removeTyping("user");
-    sendMessage(txt);
-  }, 300);
-
-  inp.value = '';
+  presetAsk(question);
+  input.value = "";
 }
+
 
 
 function sendMessage(txt) {
@@ -1009,7 +1011,7 @@ function sendMessage(txt) {
   setTimeout(() => {
     removeTyping("author");
     const replyText = findBestAnswer(currentKey, txt, true);
-    typeWriter(replyText, "author", 25);
+    typeWriter(replyText || "I am here and listening.", "author");
   }, 1000);
 }
 	
@@ -4398,7 +4400,7 @@ ahmet: [
   a: "Yes. Awareness prepares the mind. Purpose guides action."
 }
 
-],
+]
 
 };
 function addMessage(type, text) {
@@ -4420,23 +4422,20 @@ function similarity(a, b) {
   a = normalize(a);
   b = normalize(b);
 
-  if (!a || !b) return 0;
+  const aWords = a.split(" ");
+  const bWords = b.split(" ");
 
-  const longer = a.length > b.length ? a : b;
-  const shorter = a.length > b.length ? b : a;
-
-  let same = 0;
-  for (let i = 0; i < shorter.length; i++) {
-    if (shorter[i] === longer[i]) same++;
+  let matches = 0;
+  for (let w of aWords) {
+    if (bWords.includes(w)) matches++;
   }
-
-  // 0–1 arası benzerlik oranı
-  return same / longer.length;
+  return matches;
 }
 
-function findBestAnswer(authorId, userQuestion, detailed = false) {
+
+function findBestAnswer(authorId, userQuestion) {
   const list = qaPool[authorId];
-  if (!list) return "I have nothing to say right now.";
+  if (!list) return "I am silent right now.";
 
   const uq = normalize(userQuestion);
 
@@ -4445,30 +4444,22 @@ function findBestAnswer(authorId, userQuestion, detailed = false) {
 
   for (let item of list) {
     const score = similarity(uq, item.q);
-
     if (score > bestScore) {
       bestScore = score;
       bestItem = item;
     }
   }
 
-  if (!bestItem || bestScore < 0.2) {
-    return "That is an interesting question. I would need time to reflect on it.";
+  // HİÇBİR ŞEY UYUŞMAZSA BİLE → EN YAKIN
+  if (!bestItem) {
+    return list[0].a;
   }
 
   return bestItem.a;
 }
 
-  // 🔹 detaylı mod
-  if (detailed) {
-    return bestItem.a + " " +
-      "In my literary world, this theme unfolds gradually through characters, inner conflicts, and silent observations. " +
-      "Rather than offering clear resolutions, I allow emotions to deepen and contradictions to remain visible, because this reflects the nature of real human experience.";
-  }
 
-  // 🔹 normal mod
-  return bestItem.a;
-}
+
 
 function sendAI() {
   const input = document.getElementById("userInput");
@@ -4515,10 +4506,8 @@ function typeWriter(text, type) {
   }
 
   function playSound(char) {
-    // boşluk ve satırda ses yok
     if (char === " " || char === "\n") return;
 
-    // her 2–3 harfte bir ses
     soundCounter++;
     if (soundCounter % 2 === 0) {
       typeSound.currentTime = 0;
@@ -4538,8 +4527,9 @@ function typeWriter(text, type) {
     div.textContent += char;
     playSound(char);
     i++;
-    log.scrollTop = log.scrollHeight;
     setTimeout(typing, getDelay(char));
+  } else {
+    typingActive = false; // 🔒 yazı bitince KAPANIYOR
   }
 }
 
@@ -4547,27 +4537,19 @@ function typeWriter(text, type) {
   typing();
 }
 
-
-
-
 	function presetAsk(question) {
   typingActive = true;
 
-  const log = document.getElementById('chatLog');
-
-  const userDiv = document.createElement('div');
-  userDiv.className = 'message user';
-  userDiv.innerText = question;
-  log.appendChild(userDiv);
-
+  addMessage("user", question);
   showTyping("author");
 
   setTimeout(() => {
     removeTyping("author");
-    const replyText = findBestAnswer(currentKey, question, true);
-    typeWriter(replyText, "author");
-  }, 1000);
+    const reply = findBestAnswer(currentKey, question);
+    typeWriter(reply, "author");
+  }, 800);
 }
+
 
 
 
