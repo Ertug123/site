@@ -4409,7 +4409,7 @@ function addMessage(type, text) {
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
-	function normalize(text) {
+function normalize(text) {
   return text
     .toLowerCase()
     .replace(/[^\w\s]/g, "")
@@ -4430,20 +4430,21 @@ function similarity(a, b) {
     if (shorter[i] === longer[i]) same++;
   }
 
+  // 0–1 arası benzerlik oranı
   return same / longer.length;
 }
+
 function findBestAnswer(authorId, userQuestion, detailed = false) {
   const list = qaPool[authorId];
-  if (!list) return "I am here.";
+  if (!list) return "I have nothing to say right now.";
 
-  const uq = userQuestion.toLowerCase().replace(/[^\w\s]/g, "").split(" ");
+  const uq = normalize(userQuestion);
 
   let bestScore = 0;
   let bestItem = null;
 
   for (let item of list) {
-    const sq = item.q.toLowerCase().replace(/[^\w\s]/g, "").split(" ");
-    const score = uq.filter(w => sq.includes(w)).length;
+    const score = similarity(uq, item.q);
 
     if (score > bestScore) {
       bestScore = score;
@@ -4451,8 +4452,8 @@ function findBestAnswer(authorId, userQuestion, detailed = false) {
     }
   }
 
-  if (!bestItem || !bestItem.a) {
-    return "I am here, observing quietly.";
+  if (!bestItem || bestScore < 0.2) {
+    return "That is an interesting question. I would need time to reflect on it.";
   }
 
   return bestItem.a;
