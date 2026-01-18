@@ -500,6 +500,12 @@
 </div>
 
 <script>
+	function cleanWords(str) {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .split(" ");
+}
 	let typingActive = false;
 	const typeSound = new Audio("ses/single-key-press-393908.mp3")
 typeSound.volume = 0.25;
@@ -1006,6 +1012,7 @@ function sendMessage(txt) {
     typeWriter(replyText, "author", 25);
   }, 1000);
 }
+	
 
 
 const qaPool = {
@@ -4402,16 +4409,38 @@ function addMessage(type, text) {
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
-function findBestAnswer(authorId, userQuestion, detailed = false) {
+	function normalize(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .trim();
+}
+
+function similarity(a, b) {
+  a = normalize(a);
+  b = normalize(b);
+
+  if (!a || !b) return 0;
+
+  const longer = a.length > b.length ? a : b;
+  const shorter = a.length > b.length ? b : a;
+
+  let same = 0;
+  for (let i = 0; i < shorter.length; i++) {
+    if (shorter[i] === longer[i]) same++;
+  }
+
+  return same / longer.length;
+}
+function findBestAnswer(authorId, userQuestion) {
   const list = qaPool[authorId];
-  const uq = userQuestion.toLowerCase().split(" ");
+  const user = normalize(userQuestion);
 
   let bestScore = 0;
   let bestItem = null;
 
   for (let item of list) {
-    const sq = item.q.toLowerCase().split(" ");
-    const score = uq.filter(w => sq.includes(w)).length;
+    const score = similarity(user, item.q);
 
     if (score > bestScore) {
       bestScore = score;
@@ -4419,9 +4448,13 @@ function findBestAnswer(authorId, userQuestion, detailed = false) {
     }
   }
 
-  if (!bestItem) {
-    return "This question touches on the core of my literary perspective.";
+  // 🔒 güvenlik: saçma veya boş eşleşme engeli
+  if (!bestItem || bestScore < 0.35 || !bestItem.a) {
+    return "I am here, quietly observing life and people.";
   }
+
+  return bestItem.a;
+}
 
   // 🔹 detaylı mod
   if (detailed) {
