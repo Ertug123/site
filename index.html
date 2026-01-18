@@ -4432,15 +4432,18 @@ function similarity(a, b) {
 
   return same / longer.length;
 }
-function findBestAnswer(authorId, userQuestion) {
+function findBestAnswer(authorId, userQuestion, detailed = false) {
   const list = qaPool[authorId];
-  const user = normalize(userQuestion);
+  if (!list) return "I am here.";
+
+  const uq = userQuestion.toLowerCase().replace(/[^\w\s]/g, "").split(" ");
 
   let bestScore = 0;
   let bestItem = null;
 
   for (let item of list) {
-    const score = similarity(user, item.q);
+    const sq = item.q.toLowerCase().replace(/[^\w\s]/g, "").split(" ");
+    const score = uq.filter(w => sq.includes(w)).length;
 
     if (score > bestScore) {
       bestScore = score;
@@ -4448,9 +4451,8 @@ function findBestAnswer(authorId, userQuestion) {
     }
   }
 
-  // 🔒 güvenlik: saçma veya boş eşleşme engeli
-  if (!bestItem || bestScore < 0.35 || !bestItem.a) {
-    return "I am here, quietly observing life and people.";
+  if (!bestItem || !bestItem.a) {
+    return "I am here, observing quietly.";
   }
 
   return bestItem.a;
